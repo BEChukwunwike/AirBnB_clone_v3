@@ -1,86 +1,81 @@
 #!/usr/bin/python3
-'''Contains the states view for the API.'''
-from flask import jsonify, request
-from werkzeug.exceptions import NotFound, MethodNotAllowed, BadRequest
-
+"""This is a module that contains views for the State for this API"""
+from flask import jsonify
+from flask import request
+from flask import abort
+from flask import make_response
 from api.v1.views import app_views
 from models import storage
 from models.state import State
 
 
-ALLOWED_METHODS = ['GET', 'DELETE', 'POST', 'PUT']
-'''Methods allowed for the states endpoint.'''
-
-
-@app_views.route('/states', methods=ALLOWED_METHODS)
-@app_views.route('/states/<state_id>', methods=ALLOWED_METHODS)
-def handle_states(state_id=None):
-    '''The method handler for the states endpoint.
-    '''
-    handlers = {
-        'GET': get_states,
-        'DELETE': remove_state,
-        'POST': add_state,
-        'PUT': update_state,
-    }
-    if request.method in handlers:
-        return handlers[request.method](state_id)
-    else:
-        raise MethodNotAllowed(list(handlers.keys()))
-
-
-def get_states(state_id=None):
-    '''Gets the state with the given id or all states.
-    '''
-    all_states = storage.all(State).values()
-    if state_id:
-        res = list(filter(lambda x: x.id == state_id, all_states))
-        if res:
-            return jsonify(res[0].to_dict())
-        raise NotFound()
-    all_states = list(map(lambda x: x.to_dict(), all_states))
+@app_views.route("/states", methods=["GET"], strict_slashes=False)
+def get_all_states():
+    """This is a function that gets all states when the /states route is
+    reached"""
+    result = storage.all(State).values()
+    all_states = list(map(lambda x: x.to_dict(), result))
     return jsonify(all_states)
 
 
-def remove_state(state_id=None):
-    '''Removes a state with the given id.
-    '''
-    all_states = storage.all(State).values()
-    res = list(filter(lambda x: x.id == state_id, all_states))
-    if res:
-        storage.delete(res[0])
+@app_views.route("/states/<state_id>", methods=["GET"], strict_slashes=False)
+def get_one_state(state_id):
+    """This is a function that gets a state when the /states/state_id route
+    is reached"""
+    result = storage.all(State).values()
+    if state_id:
+        one_state = list(filter(lambda x: x.id == state_id, result))
+        if one_state:
+            return jsonify(one_state[0].to_dict())
+        abort(404)
+
+
+@app_views.route("/states/<state_id>", methods=["DELETE"],
+                 strict_slashes=False)
+def delete_one_state(state_id=None):
+    """this is a function that deletes a specified state when the
+    /states/states_id route is reached"""
+    result = storage.all(State).values()
+    state = list(filter(lambda x: x.id == state_id, result))
+    if state:
+        storage.delete(state[0])
         storage.save()
-        return jsonify({}), 200
-    raise NotFound()
+        return make_response(jsonify({}), 200)
+    abort(404)
 
 
-def add_state(state_id=None):
-    '''Adds a new state.
-    '''
-    data = request.get_json()
-    if type(data) is not dict:
-        raise BadRequest(description='Not a JSON')
-    if 'name' not in data:
-        raise BadRequest(description='Missing name')
-    new_state = State(**data)
-    new_state.save()
-    return jsonify(new_state.to_dict()), 201
+@app_views.route("/states", methods=["POST"], strict_slashes=False)
+def create_state(state_id=None):
+    """This is a function that creates a state at the /states route's
+    endpoint"""
+    user_request = request.get_json()
+    if type(user_request) is dict:
+        if 'name' in user_request:
+            state = State(**user_request)
+            state.save
+            return make_response(jsonify(state.to_dict()), 201)
+        else:
+            abort(400, description='Missing name')
+    else:
+        abort(400, description='Not a JSON')
 
 
-def update_state(state_id=None):
-    '''Updates the state with the given id.
-    '''
-    xkeys = ('id', 'created_at', 'updated_at')
-    all_states = storage.all(State).values()
-    res = list(filter(lambda x: x.id == state_id, all_states))
-    if res:
-        data = request.get_json()
-        if type(data) is not dict:
-            raise BadRequest(description='Not a JSON')
-        old_state = res[0]
-        for key, value in data.items():
-            if key not in xkeys:
-                setattr(old_state, key, value)
-        old_state.save()
-        return jsonify(old_state.to_dict()), 200
-    raise NotFound()
+@app_views.route("/states/<state_id>", methods=["PUT"], strict_slashes=False)
+def update_one_state(state_id=None):
+    """This is a function that updates a state at the /states/state_id route's
+    endpoint"""
+    result = storage.all(State).values()
+    state = list(filter(lambda x: x.id == state_id, result))
+    if state:
+        update_request = request.get_json()
+        if type(update_request) is dict:
+            update = state[0]
+            for item, value in update_request.items():
+                if item not in ["id", "created_at", "updated_at"]:
+                    setattr(update, item, value)
+            update.save()
+            return make_response(jsonify(update.to_dict()), 200)
+        else:
+            abort(400, description='Not a JSON')
+    else:
+        abort(404)

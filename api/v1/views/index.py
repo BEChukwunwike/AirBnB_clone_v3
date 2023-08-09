@@ -1,7 +1,8 @@
 #!/usr/bin/python3
-'''Contains the index view for the API.'''
+"""
+Module that contains the index view for the API
+"""
 from flask import jsonify
-
 from api.v1.views import app_views
 from models import storage
 from models.amenity import Amenity
@@ -13,24 +14,23 @@ from models.user import User
 
 
 @app_views.route('/status')
-def get_status():
-    '''Gets the status of the API.
-    '''
+def status_getter():
+    """route /api/status gets the status of the API"""
     return jsonify(status='OK')
 
 
 @app_views.route('/stats')
-def get_stats():
-    '''Gets the number of objects for each type.
-    '''
-    objects = {
-        'amenities': Amenity,
-        'cities': City,
-        'places': Place,
-        'reviews': Review,
-        'states': State,
-        'users': User
+def statistics():
+    """This is a route /api/stats that displays the statistical count for each
+    object"""
+    all_models = {
+        "amenities": Amenity,
+        "cities": City,
+        "places": Place,
+        "reviews": Review,
+        "states": State,
+        "users": User
     }
-    for key, value in objects.items():
-        objects[key] = storage.count(value)
-    return jsonify(objects)
+    for item, val in all_models.items():
+        all_models[item] = storage.count(val)
+    return jsonify(all_models)
